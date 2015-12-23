@@ -74,10 +74,11 @@ data = u"""
 312		カセットブック
 313		カセットブック
 314		カセットブック
+426			L$	L$
 19	a	参考	R033ア	R196ボ
 19	b	参考	R002ミ	R031
 155	a	参考	R031	R031
-155	b	近松	920イ	920ワ
+155	b	郷土	S920	S920
 156	a	参考	R202	R291.0
 157	a	参考	R337	R459
 157	b	参考	R291.0	R337
@@ -89,12 +90,12 @@ data = u"""
 160	b	郷土	S002	S216
 161	a	郷土	S336	S498
 161	b	郷土	S284	S335
-162	a	郷土	S900	S990
+162	a	郷土	S900	S919
+162	a	郷土	S921	S990
 162	b	郷土	S500	S830
 310		雑郷
 167	a	ビジネス	007	914.6
-166	a	一般洋書	Y933ラ	Y991イ
-166	b	一般洋書	Y049	Y933
+166		一般洋書	Y000	Y991イ
 165	a	大型	W723	W933
 165	b	大型	W708	W723
 169	a	大型	W702	W708
@@ -137,7 +138,6 @@ data = u"""
 381	a	絵本	Eフ	Eマ
 381	b	絵本	Eマ	Eモ
 385	a	絵本	Eレ	Eワ
-385	b	絵本
 368	a	児童	94	95
 367	b	児童	93マ	94
 357	a	児童	93ト	93ホ
@@ -189,6 +189,10 @@ def callno_to_float(no):
     if no == '':
         return 0
 
+    # ラミネート向けの特別処理
+    if no == 'L$' or re.search(u'L$', no):
+        return 11000000
+
     # 2桁 + 文字列の場合
     tmp_ = re.findall(
             u"^([0-9]{2})([アァイィウゥエェオォカガキギクグケゲコゴサザシジスズセゼソゾタダチヂツッヅテデトドナニヌネノハバパヒビピフブプヘベペホボポマミムメモヤャユュヨョラリルレロワヲン]+)", no)
@@ -198,6 +202,12 @@ def callno_to_float(no):
     tmp_ = re.findall(u"^([0-9]{2})$", no)
     if len(tmp_) > 0:
         no = "%02s0" % tmp_[0]
+
+    # 3桁 + 文字列の場合
+    tmp_ = re.findall(
+            u"^([0-9]{3})([アァイィウゥエェオォカガキギクグケゲコゴサザシジスズセゼソゾタダチヂツッヅテデトドナニヌネノハバパヒビピフブプヘベペホボポマミムメモヤャユュヨョラリルレロワヲン]+)", no)
+    if len(tmp_) > 0:
+        no = "%03s.00000%s" % tmp_[0]
 
     x = 0
     tbl = u"アァイィウゥエェオォカガキギクグケゲコゴサザシジスズセゼソゾタダチヂツッヅテデトドナニヌネノハバパヒビピフブプヘベペホボポマミムメモヤャユュヨョラリルレロワヲン"
@@ -300,6 +310,8 @@ def parse(place, no):
     import math
     result = []
     flag = {}
+    if _DEBUG:
+        print "search:", no
     for line in tables:
         tmp_float = callno_to_float(no)
         regex = '^' + line['place']
@@ -374,6 +386,16 @@ def html(data, url, version):
     if _DEBUG:
         print json.dumps(x, ensure_ascii=False, indent=2)
         print "----------------------"
+    if re.search(u'&#39894;&#27743;&#38306;&#20418;&#12288;&#26032;&#32862;&#20999;&#12426;&#25244;&#12365;',
+                 data) and len(x) > 0 and len(x[0]['result']) > 0:
+        x[0]['result'][0] = {
+            'shelf_id': 307,
+            'side': '',
+            'place': u'新聞切り抜き',
+            'floor': u'1階'
+        }
+        x[0]['source']['location']=u"新聞切り抜き"
+
     is_rent = False
     is_backyard = False
     is_other = False
@@ -405,7 +427,7 @@ def html(data, url, version):
                         message += u"【" + t['side'] + u"面】"
                     message += ' '
                     shelves.append({'id': t['shelf_id'], 'side': t['side']})
-                key=str(t['shelf_id'])+ t['side']
+                key = str(t['shelf_id']) + t['side']
                 if key not in shelf_flags:
                     stocks.append(
                             {'message': message, 'shelfId': item['result'][0]['shelf_id'], 'floorId': 7,
@@ -421,7 +443,6 @@ def html(data, url, version):
     if len(stocks) > 0:
         for x in stocks:
             if version == '1.3.0':
-                import cgi
                 j = json.dumps(x['shelves'])
                 j = j.replace('"', '&quot;')
                 if x['shelfId']:
@@ -461,8 +482,7 @@ def html(data, url, version):
         else:
             html += u"<a href=\"" + url + u"\" target=\"_blank\"><div class=reserve><div class=place>エラーが発生</div><div class=no>予約できます</div><div class=open><i class=\"fa fa-globe\"></i> OPACを開く</div></div></a>"
 
-    return {'stocks': stocks, 'html': html}
+    return {'html': html}
 
-
-# print callno_to_float(u'YEベ')
+# print callno_to_float(u'S200L')
 # print callno_to_float(u'Fタカハ')
