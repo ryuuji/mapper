@@ -2,8 +2,11 @@
 # -*- coding: utf-8 -*-
 
 import re
-from bs4 import BeautifulSoup
 import zenhan
+import json
+from bs4 import BeautifulSoup
+
+_DEBUG = True
 
 data = u"""
 320	a	一般	010	069
@@ -30,8 +33,8 @@ data = u"""
 14	b	一般	Fソノア	Fツジヒ
 15	a	一般	Fフジタ	Fミンナ
 15	b	一般	Fムコウ	Fヤマモ
-16	a	一般	914.6	914.6
-16	b	一般	915キ	916ヘ
+16	a	一般	914.6ナ	914.6ワ
+16	b	一般	915キ	916ホ
 17	a	一般	918.6ト	918.6ム
 17	b	一般	918.6モ	928シ
 18	a	一般	933ヒ	933ワ
@@ -68,6 +71,68 @@ data = u"""
 153	b	一般	928チ	933キ
 154	a	一般	933ク	933ヒ
 154	b	一般	950	994
+312		カセットブック
+313		カセットブック
+314		カセットブック
+19	a	参考	R033ア	R196ボ
+19	b	参考	R002ミ	R031
+155	a	参考	R031	R031
+155	b	近松	920イ	920ワ
+156	a	参考	R202	R291.0
+157	a	参考	R337	R459
+157	b	参考	R291.0	R337
+158	a	参考	R570	R780
+158	b	参考	R460	R569
+159	a	参考	R830	R991
+159	b	参考	R780ニ	R829
+160	a	郷土	S221	S284
+160	b	郷土	S002	S216
+161	a	郷土	S336	S498
+161	b	郷土	S284	S335
+162	a	郷土	S900	S990
+162	b	郷土	S500	S830
+310		雑郷
+167	a	ビジネス	007	914.6
+166	a	一般洋書	Y933ラ	Y991イ
+166	b	一般洋書	Y049	Y933
+165	a	大型	W723	W933
+165	b	大型	W708	W723
+169	a	大型	W702	W708
+169	b	大型	W291.0	W702
+168	a	大型	W210.1	W290
+168	b	大型	W012	W210.0
+170	a	ビジＤＶＤ
+170	b	ビジネスめがね
+170	b	ビジネス	007	914.6
+255	a	コミック	H726	H726
+255	b	コミック	H726	H726
+256	a	コミック	H726	H726
+256	b	コミック	H726	H726
+257	a	コミック	H726	H726
+257	b	文庫	H953	H999
+258	a	文庫	H933ラ	H953
+258	b	文庫	H933ハ	H933ヨ
+259	a	文庫	H933ク	H933ハ
+259	b	文庫	H923ウ	H933ク
+260	a	文庫	HFヤマダ	HFワレモ
+260	b	文庫	HFマツモ	HFヤマザ
+261	a	文庫	HFハイク	HFマツム
+261	b	文庫	HFトウド	HFノリス
+262	a	文庫	HFソウダ	HFテンド
+262	b	文庫	HFサワキ	HFセンソ
+291	a	文庫	HFクロカ	HFサムク
+291	b	文庫	HFカイキ	HFクロイ
+292	a	文庫	HFイシカ	HFカイオ
+292	b	文庫	HFアイカ	HFイシイ
+405	a	絵本	Eア	Eイ
+405	b	絵本	Eク	Eサ
+404	a	絵本	Eイ	Eオ
+404	b	絵本	Eカ	Eク
+403	a	絵本	Eシ	Eセ
+403	b	絵本	Eニ	Eハ
+402	a	絵本	Eソ	Eチ
+402	b	絵本	Eツ	Eナ
+396	a	絵本	Eハ	Eフ
 396	b	絵本	Eヤ	Eル
 381	a	絵本	Eフ	Eマ
 381	b	絵本	Eマ	Eモ
@@ -102,62 +167,99 @@ data = u"""
 373	b	児童	15	20
 374	a	児童	00	14
 374	b	児童参考	R007	R999
+375		紙芝居	K	K
+377		紙芝居	K	K
+401		紙芝居	K	K
+388		雑誌児童
+251		雑誌$
+252		雑誌$
+253		雑誌$
+254		雑誌$
+168		CD
+466		ブックスタート
+467		ブックスタート
+389		ビデオ
+390		ビデオ
+391		ビデオ
+392		ビデオ
 """
 
 
 def callno_to_float(no):
-    ret = 0
+    if no == '':
+        return 0
+
+    # 2桁 + 文字列の場合
+    tmp_ = re.findall(
+            u"^([0-9]{2})([アァイィウゥエェオォカガキギクグケゲコゴサザシジスズセゼソゾタダチヂツッヅテデトドナニヌネノハバパヒビピフブプヘベペホボポマミムメモヤャユュヨョラリルレロワヲン]+)", no)
+    if len(tmp_) > 0:
+        no = "%02s0.00000%s" % tmp_[0]
+    # 2桁のみの場合
+    tmp_ = re.findall(u"^([0-9]{2})$", no)
+    if len(tmp_) > 0:
+        no = "%02s0" % tmp_[0]
+
     x = 0
-    tbl = u"アイウエオカキクケコサシスセソタチツテトナニヌネノハヒフヘホマミムメモヤユヨラリルレロワヲンジボダガギグパピプペポ"
+    tbl = u"アァイィウゥエェオォカガキギクグケゲコゴサザシジスズセゼソゾタダチヂツッヅテデトドナニヌネノハバパヒビピフブプヘベペホボポマミムメモヤャユュヨョラリルレロワヲン"
     for word in tbl:
         no = re.sub(word, "%02d" % x, no)
         x += 1
-    tmp_ = re.findall(u"^HF([0-9.]+)$", no)
-    if len(tmp_) > 0:
-        ret = float(tmp_[0]) + 1000000
-        return ret
-    tmp_ = re.findall(u"^H([0-9.]+)$", no)
-    if len(tmp_) > 0:
-        ret = float(tmp_[0]) + 2000000
-        return ret
-    tmp_ = re.findall(u"^R([0-9.]+)$", no)
-    if len(tmp_) > 0:
-        ret = float(tmp_[0]) + 3000000
-        return ret
-    tmp_ = re.findall(u"^S([0-9.]+)$", no)
-    if len(tmp_) > 0:
-        ret = float(tmp_[0]) + 4000000
-        return ret
-    tmp_ = re.findall(u"^E([0-9.]+)$", no)
-    if len(tmp_) > 0:
-        ret = float(tmp_[0]) + 5000000
-        return ret
-    tmp_ = re.findall(u"^W([0-9.]+)$", no)
-    if len(tmp_) > 0:
-        ret = float(tmp_[0]) + 6000000
-        return ret
+
     tmp_ = re.findall(u"^F([0-9.]+)$", no)
     if len(tmp_) > 0:
-        ret = float(tmp_[0]) / 100000000 + 913
+        ret = float('913.600%s' % tmp_[0])
         return ret
 
-    tmp_ = re.findall(u"([0-9]{3})\.([0-9]+)", no)
+    # 別置の処理
+    ts = [
+        {'prefix': 'HF', 'shift': 1000000, 'ndc': False},
+        {'prefix': 'R', 'shift': 3000000, 'ndc': True},
+        {'prefix': 'S', 'shift': 4000000, 'ndc': True},
+        {'prefix': 'W', 'shift': 6000000, 'ndc': True},
+        {'prefix': 'Y', 'shift': 9000000, 'ndc': True},
+        {'prefix': 'H', 'shift': 2000000, 'ndc': False},
+        {'prefix': 'E', 'shift': 5000000, 'ndc': False},
+        {'prefix': 'YE', 'shift': 8000000, 'ndc': False},
+        {'prefix': 'K', 'shift': 10000000, 'ndc': False},
+    ]
+    for t in ts:
+        if not t['ndc']:
+            tmp_ = re.findall(u"^" + t['prefix'] + "([.0-9]*)", no)
+            if len(tmp_) > 0:
+                if tmp_[0] == '':
+                    ret = t['shift']
+                else:
+                    if tmp_[0].find('.') != -1:
+                        ret = float(tmp_[0]) + t['shift']
+                    else:
+                        ret = float('0.' + tmp_[0]) + t['shift']
+                return ret
+        else:
+            tmp_ = re.findall(u"^" + t['prefix'] + "([0-9]{3})([.0-9]*)", no)
+            if len(tmp_) > 0:
+                if tmp_[0][1].find('.') != -1:
+                    ret = float(tmp_[0][0] + tmp_[0][1]) + t['shift']
+                else:
+                    ret = float(tmp_[0][0] + ".0000" + tmp_[0][1]) + + t['shift']
+                return ret
+
+    tmp_ = re.findall(u"^([0-9]{3})\.([0-9]+)", no)
     if len(tmp_) > 0:
-        ret += float(tmp_[0][0] + "." + tmp_[0][1])
+        ret = float(tmp_[0][0] + "." + tmp_[0][1])
         return ret
-    tmp_ = re.findall(u"([0-9]{3})([0-9]+)", no)
+    tmp_ = re.findall(u"^([0-9]{3})([0-9]+)", no)
     if len(tmp_) > 0:
-        ret += float(tmp_[0][0] + "." + tmp_[0][1])
+        ret = float(tmp_[0][0] + "." + tmp_[0][1])
         return ret
-    tmp_ = re.findall(u"([0-9]{3})", no)
+    tmp_ = re.findall(u"^([0-9]{3})", no)
     if len(tmp_) > 0:
-        ret += float(tmp_[0])
+        ret = float(tmp_[0])
         return ret
-    tmp_ = re.findall(u"([0-9]{2})", no)
+    tmp_ = re.findall(u"^([0-9]{2})", no)
     if len(tmp_) > 0:
-        ret += float(tmp_[0])
+        ret = float(tmp_[0])
         return ret
-    return ret
+    raise Exception('unknown:' + no)
 
 
 tables = []
@@ -167,7 +269,7 @@ for params in data.splitlines():
         start = callno_to_float(p[3])
         end = callno_to_float(p[4])
         f = u'1階'
-        if p[2] == u'絵本' or p[2] == u'紙芝居' or re.search(u'^児童', p[2]):
+        if p[2] == u'絵本' or p[2] == u'紙芝居' or re.search(u'^児童|^ビデオ|^雑誌児童', p[2]):
             f = u'2階'
         tmp = {
             'shelf_id': int(p[0]),
@@ -178,103 +280,189 @@ for params in data.splitlines():
             'floor': f
         }
         tables.append(tmp)
+    else:
+        if p[0] != '':
+            f = u'1階'
+            if p[2] == u'絵本' or p[2] == u'紙芝居' or re.search(u'^児童|^ビデオ|^雑誌児童', p[2]):
+                f = u'2階'
+            tmp = {
+                'shelf_id': int(p[0]),
+                'side': p[1],
+                'place': p[2],
+                'start': -1,
+                'end': -1,
+                'floor': f
+            }
+            tables.append(tmp)
 
 
 def parse(place, no):
+    import math
+    result = []
+    flag = {}
     for line in tables:
         tmp_float = callno_to_float(no)
-        if re.search('^' + line['place'], place):
-            if line['start'] <= tmp_float < line['end']:
-                return line
+        regex = '^' + line['place']
+        if re.search(regex, place):
+            if math.floor(line['end']) == line['end']:
+                end = line['end'] + 1
+            else:
+                end = float(str(line['end']) + '9999999999999999999999999999')
+            if (line['start'] <= tmp_float < end) or (line['start'] == -1 and line['end'] == -1):
+                if _DEBUG:
+                    print line, tmp_float
+                if not flag.has_key(str(line['shelf_id']) + line['side']):
+                    flag[str(line['shelf_id']) + line['side']] = 1
+                    result.append({
+                        'rule': line,
+                        'shelf_id': line['shelf_id'],
+                        'side': line['side'],
+                        'floor': line['floor']
+                    })
+    return result
 
 
-def mapping(data_, url):
-    # メッセージのパターン
-    # ・貸出中です
-    # ・本棚にあります
-    # ・書庫にあります
+# HTMLから所蔵情報を抽出する
+def extract_call_numbers(html):
+    result = []
+    soup = BeautifulSoup(html, "lxml")
+    for tr in soup.find_all('tr'):
+        td = tr.find_all('td', False)
+        if len(td) == 6:
+            libkey = td[1].get_text().strip()
+            status = td[4].get_text().strip()
+            location = td[3].get_text().strip().replace(u'（', '(').replace(u'）', ')')
+            if td[2].get_text().strip() == u"雑郷" and not re.search(u'閉架', location):
+                location = u"雑郷"
 
+            tmp_ = re.findall(u'\((.*)\)', location)
+            if len(tmp_) > 0:
+                location = re.sub(u'\((.*)\)', '', location)
+                location = zenhan.h2z(location, zenhan.KANA)
+                number = tmp_[0]
+                number = zenhan.h2z(number, zenhan.KANA)
+                number = number.replace(' ', '')
+            else:
+                number = ''
+            result.append({
+                'libkey': libkey,
+                'status': status,
+                'location': location,
+                'number': number
+            })
+    return result
+
+
+# 所蔵情報に所蔵場所を注入する
+def mapping(holdings):
+    results = []
+    for item in holdings:
+        tmp = {
+            'source': item,
+            'result': parse(item['location'], item['number'])
+        }
+        results.append(tmp)
+    return results
+
+
+def html(data, url, version):
+    x = extract_call_numbers(data)
+    if _DEBUG:
+        print json.dumps(x, ensure_ascii=False, indent=2)
+        print "----------------------"
+    x = mapping(x)
+    if _DEBUG:
+        print json.dumps(x, ensure_ascii=False, indent=2)
+        print "----------------------"
     is_rent = False
     is_backyard = False
     is_other = False
     is_unknown = False
-
-    soup = BeautifulSoup(data_, "lxml")
+    is_cd = False
 
     stocks = []
     shelf_flags = []
-    for tr in soup.find_all('tr'):
-        td = tr.find_all('td', False)
-        if len(td) == 6:
-            libname = td[1].get_text().strip()
-            place = td[3].get_text().strip()
-            status = td[4].get_text().strip()
-            if status == u"貸出中です":
-                is_rent = True
-                continue
-
-            if libname != u"本館":
-                is_other = True
-                continue
-
-            no = ''
-            place = place.replace(u'（', '(').replace(u'）', ')')
-            tmp_ = re.findall(u'\((.*)\)', place)
-            if len(tmp_) > 0:
-                if re.search('\.', tmp_[0]):
-                    no = tmp_[0].replace(' ', '')
-                else:
-                    no = tmp_[0].replace(' ', '.', 1)
-                    no = no.replace(' ', '')
-
-                place = re.sub(u'\((.*)\)', '', place)
-            no = zenhan.h2z(no, zenhan.KANA)
-
-            if re.search(u"書庫|閉架", place):
-                is_backyard = True
-                continue
-
-            if status == u"貸出できます" or status == u"帯出禁止":
-                tana = parse(place, no)
-                if tana is not None:
-                    message = u"本棚にあります" + u"(" + place + "/" + no + u")"
-                    message += u"【" + tana['side'] + u"面】"
-                    if no not in shelf_flags:
-                        stocks.append(
-                            {'message': message, 'shelfId': tana['shelf_id'], 'floorId': 7, 'side': tana['side'],
-                             'no': no, 'place': tana['floor'] + " " + place, 'floor': tana['floor']})
-                        shelf_flags.append(no)
-                else:
-                    is_unknown = True
+    for item in x:
+        if item['source']['status'] == u"貸出中です":
+            is_rent = True
+            continue
+        if item['source']['libkey'] != u"本館":
+            is_other = True
+            continue
+        if re.search(u"書庫|閉架", item['source']['location']):
+            is_backyard = True
+            continue
+        if item['source']['status'] == u"貸出できます" or item['source']['status'] == u"帯出禁止" or item['source'][
+            'status'] == u"館内利用の資料です" or item['source']['status'] == u'最新号のため貸出できません':
+            if len(item['result']) > 0:
+                if item['source']['location'] == 'CD':
+                    is_cd = True
+                message = item['source']['number'] + "/"
+                shelves = []
+                for t in item['result']:
+                    message += str(t['shelf_id'])
+                    if t['side']:
+                        message += u"【" + t['side'] + u"面】"
+                    message += ' '
+                    shelves.append({'id': t['shelf_id'], 'side': t['side']})
+                key=str(t['shelf_id'])+ t['side']
+                if key not in shelf_flags:
+                    stocks.append(
+                            {'message': message, 'shelfId': item['result'][0]['shelf_id'], 'floorId': 7,
+                             'side': item['result'][0]['side'],
+                             'no': item['source']['number'],
+                             'place': item['result'][0]['floor'] + " " + item['source']['location'],
+                             'floor': item['result'][0]['floor'], 'shelves': shelves})
+                    shelf_flags.append(key)
+            else:
+                is_unknown = True
 
     html = ""
     if len(stocks) > 0:
-        message = u"本棚にあります"
         for x in stocks:
-            if x['shelfId']:
-                if x['floor'] == u"1階":
-                    js = "navigateShelf('7'," + str(x['shelfId']) + ");"
+            if version == '1.3.0':
+                import cgi
+                j = json.dumps(x['shelves'])
+                j = j.replace('"', '&quot;')
+                if x['shelfId']:
+                    if x['floor'] == u"1階":
+                        js = "navigateShelf('7'," + j + ");"
+                    else:
+                        js = "navigateShelf('8'," + j + ");"
                 else:
-                    js = "navigateShelf('8'," + str(x['shelfId']) + ");"
+                    js = ""
+                html += u"<div class=stockbox onclick=\"" + js + u"\"><div class=place>" + x[
+                    'place'] + u"</div><div class=no>" + x[
+                            'message'] + u"</div><div class=open><i class=\"fa fa-map\"></i> マップを開く</div></div>"
+
             else:
-                js = ""
-            html += u"<div class=stockbox onclick=\"" + js + u"\"><div class=place>" + x[
-                'place'] + u"</div><div class=no>" + x['no'] + u" / " + x[
-                        'side'] + u"面</div><div class=open><i class=\"fa fa-map\"></i> マップを開く</div></div>"
+                if x['shelfId']:
+                    if x['floor'] == u"1階":
+                        js = "navigateShelf('7'," + str(x['shelfId']) + ");"
+                    else:
+                        js = "navigateShelf('8'," + str(x['shelfId']) + ");"
+                else:
+                    js = ""
+                html += u"<div class=stockbox onclick=\"" + js + u"\"><div class=place>" + x[
+                    'place'] + u"</div><div class=no>" + x[
+                            'message'] + u"</div><div class=open><i class=\"fa fa-map\"></i> マップを開く</div></div>"
     else:
         if is_unknown:
-            message = u"本棚にあります（所蔵場所データが未整備）"
             html += u"<a href=\"" + url + u"\" target=\"_blank\"><div class=reserve><div class=place>本棚にあります</div><div class=no>所蔵場所データが未整備</div><div class=open><i class=\"fa fa-globe\"></i> OPACを開く</div></div></a>"
         elif is_backyard:
-            message = u"書庫にあります（カウンターにお問い合わせください）"
             html += u"<a href=\"" + url + u"\" target=\"_blank\"><div class=reserve><div class=place>書庫にあります</div><div class=no>カウンターまで</div><div class=open><i class=\"fa fa-globe\"></i> OPACを開く</div></div></a>"
         elif is_other:
-            message = u"他館にあります（カウンターにお問い合わせください）"
             html += u"<a href=\"" + url + u"\" target=\"_blank\"><div class=reserve><div class=place>他館にあります</div><div class=no>カウンターまで</div><div class=open><i class=\"fa fa-globe\"></i> OPACを開く</div></div></a>"
         elif is_rent:
-            message = u"貸出中です（予約できます）"
-            html += u"<a href=\"" + url + u"\" target=\"_blank\"><div class=rental><div class=place>貸出中です</div><div class=no>予約できます</div><div class=open><i class=\"fa fa-globe\"></i> OPACを開く</div></div></a>"
+            if is_cd:
+                html += u"<a href=\"" + url + u"\" target=\"_blank\"><div class=rental><div class=place>貸出中です</div></div></a>"
+            else:
+                html += u"<a href=\"" + url + u"\" target=\"_blank\"><div class=rental><div class=place>貸出中です</div><div class=no>予約できます</div><div class=open><i class=\"fa fa-globe\"></i> OPACを開く</div></div></a>"
         else:
-            message = u"エラーが発生しました"
             html += u"<a href=\"" + url + u"\" target=\"_blank\"><div class=reserve><div class=place>エラーが発生</div><div class=no>予約できます</div><div class=open><i class=\"fa fa-globe\"></i> OPACを開く</div></div></a>"
-    return {'status': message, 'stocks': stocks, 'html': html}
+
+    return {'stocks': stocks, 'html': html}
+
+
+# print callno_to_float(u'YEベ')
+# print callno_to_float(u'Fタカハ')

@@ -4,16 +4,19 @@ from types import UnicodeType
 
 ASCII = 1
 DIGIT = 2
-KANA  = 4
+KANA = 4
 ALL = ASCII | DIGIT | KANA
 
 __version__ = '0.4'
 
+
 class zenhanError(Exception):
     def __init__(self, value):
         self.value = value
+
     def __str__(self):
         return repr(self.value)
+
 
 # list of ZENKAKU characters
 z_ascii = [u"£á", u"£â", u"£ã", u"£ä", u"£å", u"£æ", u"£ç", u"£è", u"£é",
@@ -112,6 +115,7 @@ for (z, h) in zip(z_kana, h_kana):
 
 del z_kana, h_kana
 
+
 # function check text
 # argument and return: unicode string
 def _check_text(t):
@@ -119,6 +123,7 @@ def _check_text(t):
         return t
     else:
         raise zenhanError, "Sorry... You must set UNICODE String."
+
 
 # function check convertion mode and make transform dictionary
 # argument: integer
@@ -130,6 +135,7 @@ def _check_mode_zh(m):
     else:
         raise zenhanError, "Sorry... You set invalid mode."
 
+
 def _check_mode_hz(m):
     t_m = {}
     if isinstance(m, int) and m >= 0 and m <= 7:
@@ -137,10 +143,11 @@ def _check_mode_hz(m):
     else:
         raise zenhanError, "Sorry... You set invalid mode."
 
+
 #
 def _zh_trans_map(m):
     tm = {}
-    if m >=4:
+    if m >= 4:
         tm.update(zh_kana)
         m -= 4
     if m >= 2:
@@ -150,9 +157,10 @@ def _zh_trans_map(m):
         tm.update(zh_ascii)
     return tm
 
+
 def _hz_trans_map(m):
     tm = {}
-    if m >=4:
+    if m >= 4:
         tm.update(hz_kana)
         m -= 4
     if m >= 2:
@@ -179,6 +187,7 @@ def z2h(text="", mode=ALL, ignore=()):
 
     return ''.join(converted)
 
+
 # function convert from HANKAKU to ZENKAKU
 # argument and return: unicode string
 def h2z(text, mode=ALL, ignore=()):
@@ -193,7 +202,7 @@ def h2z(text, mode=ALL, ignore=()):
             converted.append(c)
         elif c in (u"ŽÞ", u"Žß"):
             p = converted.pop()
-            converted.extend(hz_map.get(prev+c, [p, hz_map.get(c, c)]))
+            converted.extend(hz_map.get(prev + c, [p, hz_map.get(c, c)]))
         else:
             converted.append(hz_map.get(c, c))
 
@@ -201,12 +210,13 @@ def h2z(text, mode=ALL, ignore=()):
 
     return ''.join(converted)
 
+
 if __name__ == "__main__":
     teststr = unicode("Žßabc£Ä£ÅŽÞ£Æ123£´£µ£¶Ž±Ž¶ŽÞŽ»¥À¥Ê¥Ð¥ÓŽÌŽßŽÍŽßŽß", "euc-jp")
 
     print "original:", teststr.encode("euc-jp")
     print "h2z ascii only:", h2z(teststr, ASCII).encode("euc-jp")
-    print "h2z ascii and kana:", h2z(teststr, ASCII|KANA).encode("euc-jp")
+    print "h2z ascii and kana:", h2z(teststr, ASCII | KANA).encode("euc-jp")
     print "z2h digit only:", z2h(teststr, DIGIT).encode("euc-jp")
-    print "z2h digit and kana:", z2h(teststr, DIGIT|KANA).encode("euc-jp")
-    print "z2h digit and kana, but '£µ':", z2h(teststr, DIGIT|KANA, (u"£µ")).encode("euc-jp")
+    print "z2h digit and kana:", z2h(teststr, DIGIT | KANA).encode("euc-jp")
+    print "z2h digit and kana, but '£µ':", z2h(teststr, DIGIT | KANA, (u"£µ")).encode("euc-jp")
