@@ -39,8 +39,8 @@ data = u"""
 17	b	一般	918.6モ	928シ
 18	a	一般	933ヒ	933ワ
 18	b	一般	934	949
+140	a	点字	014	140
 140	a	大活字	041	949
-140	a	一般総記	014	014
 140	a	一般	002	007
 140	b	一般	134	158
 141	a	一般	159	188
@@ -66,7 +66,7 @@ data = u"""
 151	a	一般	Fニシカ	Fフジサ
 151	b	一般	Fヤマモ	914.6エ
 152	a	一般	914.6オ	914.6ト
-152	b	一般	916ボ	918.6ワ
+152	b	一般	916ボ	918.6ウ
 153	a	一般	918.6エ	918.6テ
 153	b	一般	928チ	933キ
 154	a	一般	933ク	933ヒ
@@ -75,8 +75,8 @@ data = u"""
 313		カセットブック
 314		カセットブック
 426			L$	L$
-19	a	参考	R033ア	R196ボ
-19	b	参考	R002ミ	R031
+19	b	参考	R033ア	R196ボ
+19	a	参考	R002ミ	R031
 155	a	参考	R031	R031
 155	b	郷土	S920	S920
 156	a	参考	R202	R291.0
@@ -93,8 +93,9 @@ data = u"""
 162	a	郷土	S900	S919
 162	a	郷土	S921	S990
 162	b	郷土	S500	S830
+307		行政資料
 310		雑郷
-167	a	ビジネス	007	914.6
+167		ビジネス$
 166		一般洋書	Y000	Y991イ
 165	a	大型	W723	W933
 165	b	大型	W708	W723
@@ -104,11 +105,9 @@ data = u"""
 168	b	大型	W012	W210.0
 170	a	ビジＤＶＤ
 170	b	ビジネスめがね
-170	b	ビジネス	007	914.6
-255	a	コミック	H726	H726
-255	b	コミック	H726	H726
-256	a	コミック	H726	H726
-256	b	コミック	H726	H726
+170	a	ビジネス$
+255		コミック	H726	H726
+256		コミック	H726	H726
 257	a	コミック	H726	H726
 257	b	文庫	H953	H999
 258	a	文庫	H933ラ	H953
@@ -138,7 +137,8 @@ data = u"""
 381	a	絵本	Eフ	Eマ
 381	b	絵本	Eマ	Eモ
 385	a	絵本	Eレ	Eワ
-368	a	児童	94	95
+445		児童	95	99
+368		児童	94	95
 367	b	児童	93マ	94
 357	a	児童	93ト	93ホ
 357	b	児童	93コ	93テ
@@ -150,11 +150,11 @@ data = u"""
 407	b	児童	913カ	913サ
 408	a	児童	913ア	913オ
 408	b	児童	82	912
-408	b	児童洋書	YE	YE
+408	b	児童洋書
 409	a	児童	78	81
 409	b	児童	66	77
 412	a	児童	53	65
-412	b	児童	48	52
+412	b	児童	49	52
 413	a	児童	48	48
 413	b	児童	45	47
 369	a	児童	40	44
@@ -176,8 +176,9 @@ data = u"""
 253		雑誌$
 254		雑誌$
 168		CD
-466		ブックスタート
-467		ブックスタート
+466		ブックスタート	Eア	Eツ
+467		ブックスタート	Eト	Eワ
+467		こどものとも012
 389		ビデオ
 390		ビデオ
 391		ビデオ
@@ -279,7 +280,7 @@ for params in data.splitlines():
         start = callno_to_float(p[3])
         end = callno_to_float(p[4])
         f = u'1階'
-        if p[2] == u'絵本' or p[2] == u'紙芝居' or re.search(u'^児童|^ビデオ|^雑誌児童', p[2]):
+        if p[2] == u'絵本' or p[2] == u'紙芝居' or re.search(u'^児童|^ビデオ|^雑誌児童|^ブックスタート|^こどものとも012', p[2]):
             f = u'2階'
         tmp = {
             'shelf_id': int(p[0]),
@@ -293,7 +294,7 @@ for params in data.splitlines():
     else:
         if p[0] != '':
             f = u'1階'
-            if p[2] == u'絵本' or p[2] == u'紙芝居' or re.search(u'^児童|^ビデオ|^雑誌児童', p[2]):
+            if p[2] == u'絵本' or p[2] == u'紙芝居' or re.search(u'^児童|^ビデオ|^雑誌児童|^ブックスタート|^こどものとも012', p[2]):
                 f = u'2階'
             tmp = {
                 'shelf_id': int(p[0]),
@@ -346,15 +347,22 @@ def extract_call_numbers(html):
             location = td[3].get_text().strip().replace(u'（', '(').replace(u'）', ')')
             if td[2].get_text().strip() == u"雑郷" and not re.search(u'閉架', location):
                 location = u"雑郷"
-
             tmp_ = re.findall(u'\((.*)\)', location)
             if len(tmp_) > 0:
                 location = re.sub(u'\((.*)\)', '', location)
                 location = zenhan.h2z(location, zenhan.KANA)
+                if location == u'ビジネス' and '&#12417;&#12364;&#12397;(&#65426;&#65398;&#65438;&#65416;)' in html:
+                    location = u"ビジネスめがね"
+                if location == u'一般総記' and '&#65437;&#65404;&#65438;)' in html:
+                    location = u"点字"
+                if location == u'郷土' and '(&#65399;&#65438;&#65390;&#65395;&#65406;&#65394; &#65404;&#65432;&#65390;&#65395;)' in html:
+                    location = u"行政資料"
                 number = tmp_[0]
                 number = zenhan.h2z(number, zenhan.KANA)
                 number = number.replace(' ', '')
             else:
+                if location == u'雑誌児童' and ('&#12371;&#12393;&#12418;&#12398;&#12392;&#12418;0.1.2.' in html or '&#12371;&#12393;&#12418;&#12398;&#12392;&#12418;&#65296;&#65294;&#65297;&#65294;&#65298;&#65294;&#12288;2012&#24180;' in html):
+                    location = u"こどものとも012"
                 number = ''
             result.append({
                 'libkey': libkey,
@@ -394,7 +402,7 @@ def html(data, url, version):
             'place': u'新聞切り抜き',
             'floor': u'1階'
         }
-        x[0]['source']['location']=u"新聞切り抜き"
+        x[0]['source']['location'] = u"新聞切り抜き"
 
     is_rent = False
     is_backyard = False
@@ -405,7 +413,9 @@ def html(data, url, version):
     stocks = []
     shelf_flags = []
     for item in x:
-        if item['source']['status'] == u"貸出中です":
+        if item['source']['location'] == 'CD' or item['source']['location'] == u'コミック':
+            is_cd = True
+        if item['source']['status'] == u"貸出中です" or item['source']['status'] == u"予約資料です":
             is_rent = True
             continue
         if item['source']['libkey'] != u"本館":
@@ -417,8 +427,6 @@ def html(data, url, version):
         if item['source']['status'] == u"貸出できます" or item['source']['status'] == u"帯出禁止" or item['source'][
             'status'] == u"館内利用の資料です" or item['source']['status'] == u'最新号のため貸出できません':
             if len(item['result']) > 0:
-                if item['source']['location'] == 'CD':
-                    is_cd = True
                 message = item['source']['number'] + "/"
                 shelves = []
                 for t in item['result']:
@@ -429,8 +437,12 @@ def html(data, url, version):
                     shelves.append({'id': t['shelf_id'], 'side': t['side']})
                 key = str(t['shelf_id']) + t['side']
                 if key not in shelf_flags:
+                    if item['result'][0]['floor'] == u'1階':
+                        fid = 7
+                    else:
+                        fid = 8
                     stocks.append(
-                            {'message': message, 'shelfId': item['result'][0]['shelf_id'], 'floorId': 7,
+                            {'message': message, 'shelfId': item['result'][0]['shelf_id'], 'floorId': fid,
                              'side': item['result'][0]['side'],
                              'no': item['source']['number'],
                              'place': item['result'][0]['floor'] + " " + item['source']['location'],
@@ -438,24 +450,13 @@ def html(data, url, version):
                     shelf_flags.append(key)
             else:
                 is_unknown = True
-
+    thumbnail = ""
+    message = ""
     html = ""
     if len(stocks) > 0:
         for x in stocks:
-            if version == '1.3.0':
-                j = json.dumps(x['shelves'])
-                j = j.replace('"', '&quot;')
-                if x['shelfId']:
-                    if x['floor'] == u"1階":
-                        js = "navigateShelf('7'," + j + ");"
-                    else:
-                        js = "navigateShelf('8'," + j + ");"
-                else:
-                    js = ""
-                html += u"<div class=stockbox onclick=\"" + js + u"\"><div class=place>" + x[
-                    'place'] + u"</div><div class=no>" + x[
-                            'message'] + u"</div><div class=open><i class=\"fa fa-map\"></i> マップを開く</div></div>"
-
+            if version == '1.4.0':
+                pass
             else:
                 if x['shelfId']:
                     if x['floor'] == u"1階":
@@ -468,21 +469,33 @@ def html(data, url, version):
                     'place'] + u"</div><div class=no>" + x[
                             'message'] + u"</div><div class=open><i class=\"fa fa-map\"></i> マップを開く</div></div>"
     else:
-        if is_unknown:
-            html += u"<a href=\"" + url + u"\" target=\"_blank\"><div class=reserve><div class=place>本棚にあります</div><div class=no>所蔵場所データが未整備</div><div class=open><i class=\"fa fa-globe\"></i> OPACを開く</div></div></a>"
-        elif is_backyard:
-            html += u"<a href=\"" + url + u"\" target=\"_blank\"><div class=reserve><div class=place>書庫にあります</div><div class=no>カウンターまで</div><div class=open><i class=\"fa fa-globe\"></i> OPACを開く</div></div></a>"
-        elif is_other:
-            html += u"<a href=\"" + url + u"\" target=\"_blank\"><div class=reserve><div class=place>他館にあります</div><div class=no>カウンターまで</div><div class=open><i class=\"fa fa-globe\"></i> OPACを開く</div></div></a>"
-        elif is_rent:
-            if is_cd:
-                html += u"<a href=\"" + url + u"\" target=\"_blank\"><div class=rental><div class=place>貸出中です</div></div></a>"
+        if version == '1.4.0':
+            if is_unknown:
+                message = u"所蔵場所データが未整備"
+            elif is_backyard:
+                message = u"書庫・カウンターまで"
+            elif is_other:
+                message = u"他館にあります"
+            elif is_rent:
+                if is_cd:
+                    message = u"貸出中です"
+                else:
+                    message = u"貸出中・予約できます"
             else:
-                html += u"<a href=\"" + url + u"\" target=\"_blank\"><div class=rental><div class=place>貸出中です</div><div class=no>予約できます</div><div class=open><i class=\"fa fa-globe\"></i> OPACを開く</div></div></a>"
+                message = u"エラーが発生"
         else:
-            html += u"<a href=\"" + url + u"\" target=\"_blank\"><div class=reserve><div class=place>エラーが発生</div><div class=no>予約できます</div><div class=open><i class=\"fa fa-globe\"></i> OPACを開く</div></div></a>"
+            if is_unknown:
+                html += u"<a href=\"" + url + u"\" target=\"_blank\"><div class=reserve><div class=place>本棚にあります</div><div class=no>所蔵場所データが未整備</div><div class=open><i class=\"fa fa-globe\"></i> OPACを開く</div></div></a>"
+            elif is_backyard:
+                html += u"<a href=\"" + url + u"\" target=\"_blank\"><div class=reserve><div class=place>書庫にあります</div><div class=no>カウンターまで</div><div class=open><i class=\"fa fa-globe\"></i> OPACを開く</div></div></a>"
+            elif is_other:
+                html += u"<a href=\"" + url + u"\" target=\"_blank\"><div class=reserve><div class=place>他館にあります</div><div class=no>カウンターまで</div><div class=open><i class=\"fa fa-globe\"></i> OPACを開く</div></div></a>"
+            elif is_rent:
+                if is_cd:
+                    html += u"<a href=\"" + url + u"\" target=\"_blank\"><div class=rental><div class=place>貸出中です</div></div></a>"
+                else:
+                    html += u"<a href=\"" + url + u"\" target=\"_blank\"><div class=rental><div class=place>貸出中です</div><div class=no>予約できます</div><div class=open><i class=\"fa fa-globe\"></i> OPACを開く</div></div></a>"
+            else:
+                html += u"<a href=\"" + url + u"\" target=\"_blank\"><div class=reserve><div class=place>エラーが発生</div><div class=no>予約できます</div><div class=open><i class=\"fa fa-globe\"></i> OPACを開く</div></div></a>"
 
-    return {'html': html}
-
-# print callno_to_float(u'S200L')
-# print callno_to_float(u'Fタカハ')
+    return {'html': html, 'stocks': stocks, 'message': message, 'thumbnail': thumbnail}
